@@ -41,7 +41,7 @@ pipeline {
 
     post {
         always {
-            junit '**/target/surefire-reports/*.xml'
+            junit '**/target/surefire-reports/*.xml, **/target/failsafe-reports/*.xml'
             archiveArtifacts artifacts: '**/target/*.jar', allowEmptyArchive: true
 
             // Publish SpotBugs and Checkstyle reports to Jenkins
