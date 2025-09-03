@@ -29,6 +29,11 @@ or
 java -jar target/simple-ci-demo-0.1.0-SNAPSHOT.jar
 ```
 
+## Code Quality Checks
+```bash
+mvn spotbugs:check checkstyle:check
+```
+
 ## Test
 
 ### Unit Tests
@@ -61,3 +66,4 @@ Note:
 - `POST /hello/sum`
   Request body: `{"a": 2, "b": 5}`
   Returns: `{"result": 7}`
+
