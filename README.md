@@ -1,1 +1,1 @@
-# simple-springboot-demo-app
+# simple-ci-demo
