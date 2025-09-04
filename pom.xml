@@ -84,6 +84,8 @@
               </includes>
               <reportsDirectory>${project.build.directory}/failsafe-reports</reportsDirectory>
               <reportFormat>xml</reportFormat>
+              <skipTests>false</skipTests>
+              <skipITs>false</skipITs>
             </configuration>
           </execution>
         </executions>
@@ -177,6 +179,23 @@
           <encoding>UTF-8</encoding>
           <consoleOutput>true</consoleOutput>
           <failsOnError>true</failsOnError>
+        </configuration>
+      </plugin>
+
+      <!-- PMD Plugin -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>3.27.0</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <failOnViolation>true</failOnViolation>
         </configuration>
       </plugin>
     </plugins>

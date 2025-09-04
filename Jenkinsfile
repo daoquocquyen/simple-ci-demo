@@ -1,56 +1,76 @@
 pipeline {
     agent any
 
+    options {
+        timestamps()
+        ansiColor('xterm')
+        buildDiscarder(logRotator(numToKeepStr: '50'))
+        disableConcurrentBuilds()
+        // Speeds up PR feedback if something fails early:
+        skipDefaultCheckout(false)
+    }
+
     tools {
         maven 'Maven 3.8.8' // Ensure this matches your Jenkins Maven installation name
         jdk 'JDK 17'        // Ensure this matches your Jenkins JDK installation name
     }
 
     stages {
-        stage('Checkout') {
+        stage('Cleanup workspace and Checkout') {
             steps {
+                cleanWs()
                 checkout scm
+                // Note: BRANCH_NAME and GIT_COMMIT are the built-in environment variables
+                sh 'echo "Branch: ${BRANCH_NAME:-unknown}; Commit: ${GIT_COMMIT:-unknown}"'
             }
         }
-        stage('Build') {
-            steps {
-                sh 'mvn clean package -DskipTests'
-            }
-        }
-        stage('Code Quality') {
-            steps {
-                sh 'mvn spotbugs:check checkstyle:check'
-            }
-        }
-        stage('UT/IT Test & Code Coverage') {
-            steps {
-                sh 'mvn verify'
-            }
-        }
-        stage('Deploy') {
-            when {
-                branch 'main'
-                not { changeRequest() }
-            }
-            steps {
-                echo 'Deploying Spring Boot app...'
-                // Example: sh 'scp target/*.jar user@server:/deploy/path'
-            }
-        }
-    }
 
-    post {
-        always {
-            junit '**/target/surefire-reports/*.xml, **/target/failsafe-reports/*.xml'
-            archiveArtifacts artifacts: '**/target/*.jar', allowEmptyArchive: true
-
-            // Publish SpotBugs and Checkstyle reports to Jenkins
-            recordIssues tools: [spotBugs(pattern: '**/target/spotbugsXml.xml'), checkStyle(pattern: '**/target/checkstyle-result.xml')]
+        stage('Build & Unit Tests (JDK 17)') {
+            steps {
+                sh 'mvn -B -U -DskipITs=true clean verify jacoco:report'
+            }
+            post {
+                always {
+                    junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
+                    publishHTML(target: [
+                        reportName: 'JaCoCo (Unit)',
+                        reportDir : 'target/site/jacoco',
+                        reportFiles: 'index.html',
+                        keepAll: true, alwaysLinkToLastBuild: true
+                    ])
+                }
+            }
         }
-        failure {
-            mail to: 'dev-team@example.com',
-                 subject: "Build failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "Check Jenkins for details."
+
+        stage('Static Analysis (PMD/Checkstyle/SpotBugs)') {
+            steps {
+                sh 'mvn integration-test -DskipTests=true -DskipITs=false'
+            }
+            post {
+                always {
+                recordIssues(
+                    enabledForFailure: true,
+                    tools: [
+                        pmdParser(pattern: 'target/pmd.xml'),
+                        checkStyle(pattern: 'target/checkstyle-result.xml'),
+                        spotBugs(pattern: 'target/spotbugsXml.xml')
+                    ]
+                )
+                }
+            }
+        }
+
+        stage('Integration Tests') {
+            // Run ITs on PRs and on main branch commits
+            when { anyOf { changeRequest(); branch 'main' } }
+            steps {
+                sh 'mvn -B -DskipITs=false verify'
+            }
+            post {
+                always {
+                    junit testResults: 'target/failsafe-reports/*.xml', allowEmptyResults: true
+                }
+            }
         }
     }
 }
