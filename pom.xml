@@ -11,10 +11,9 @@
 
   <properties>
     <java.version>17</java.version>
-    <spring.boot.version>3.3.2</spring.boot.version>
+    <spring.boot.version>3.5.4</spring.boot.version>
     <maven.surefire.version>3.2.5</maven.surefire.version>
     <maven.failsafe.version>3.2.5</maven.failsafe.version>
-    <jib.version>3.4.3</jib.version>
   </properties>
 
   <dependencyManagement>
@@ -196,6 +195,26 @@
         </executions>
         <configuration>
           <failOnViolation>true</failOnViolation>
+        </configuration>
+      </plugin>
+
+      <!-- OWASP Dependency-Check Plugin -->
+      <plugin>
+        <groupId>org.owasp</groupId>
+        <artifactId>dependency-check-maven</artifactId>
+        <version>12.1.0</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <failBuildOnCVSS>11</failBuildOnCVSS>
+          <autoUpdate>false</autoUpdate>
+          <failOnError>false</failOnError>
+          <dataDirectory>/tmp/dependency-check-data</dataDirectory>
         </configuration>
       </plugin>
     </plugins>

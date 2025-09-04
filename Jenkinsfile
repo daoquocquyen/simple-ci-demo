@@ -59,6 +59,22 @@ pipeline {
             }
         }
 
+        stage('Dependency Audit (OWASP)') {
+            steps {
+                sh 'mvn -B -DskipTests org.owasp:dependency-check-maven:check -Dformat=HTML'
+            }
+            post {
+                always {
+                publishHTML(target: [
+                    reportName: 'OWASP Dependency-Check',
+                    reportDir : 'target',
+                    reportFiles: 'dependency-check-report.html',
+                    keepAll: true, alwaysLinkToLastBuild: true
+                ])
+                }
+            }
+        }
+
         stage('Integration Tests') {
             // Run ITs on PRs and on main branch commits
             when { anyOf { changeRequest(); branch 'main' } }
@@ -71,5 +87,7 @@ pipeline {
                 }
             }
         }
+
+
     }
 }
