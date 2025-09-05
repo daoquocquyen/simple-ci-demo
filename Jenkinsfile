@@ -31,13 +31,15 @@ pipeline {
 
         stage('Build and push Docker Image') {
             steps {
-                def pom = readMavenPom file: 'pom.xml'
-                env.IMAGE_NAME = pom.artifactId
-                env.IMAGE_TAG = "${pom.version}-${sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()}"
-                withCredentials([usernamePassword(credentialsId: 'nexus-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    script {
-                        docker.withRegistry("https://${DOCKER_REGISTRY}", 'nexus-creds') {
-                            docker.build("${DOCKER_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_TAG}").push()
+                script {
+                    def pom = readMavenPom file: 'pom.xml'
+                    env.IMAGE_NAME = pom.artifactId
+                    env.IMAGE_TAG = "${pom.version}-${sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()}"
+                    withCredentials([usernamePassword(credentialsId: 'nexus-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        script {
+                            docker.withRegistry("https://${DOCKER_REGISTRY}", 'nexus-creds') {
+                                docker.build("${DOCKER_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_TAG}").push()
+                            }
                         }
                     }
                 }
