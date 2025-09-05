@@ -26,7 +26,7 @@ pipeline {
 
         stage('Build & Unit Tests (JDK 17)') {
             steps {
-                sh 'mvn -B -U -DskipITs=true clean verify jacoco:report'
+                sh 'mvn -B -U -DskipITs=true clean verify jacoco:report package'
             }
             post {
                 always {
@@ -85,6 +85,30 @@ pipeline {
                 always {
                     junit testResults: 'target/failsafe-reports/*.xml', allowEmptyResults: true
                 }
+            }
+        }
+
+        stage('Publish JAR to Nexus (Maven)') {
+            when { branch 'main' }  // publish for PRs (optional), guaranteed for main
+            steps {
+                sh 'mvn package -DskipTests'
+                script {
+                    def pom = readMavenPom file: 'pom.xml'
+                    nexusArtifactUploader(
+                        nexusVersion: 'nexus3',
+                        protocol: 'http',
+                        nexusUrl: 'http://localhost:8081',
+                        groupId: pom.groupId,
+                        version: pom.version,
+                        repository: 'maven-releases',
+                        credentialsId: 'nexus-creds',
+                        artifacts: [[
+                        artifactId: pom.artifactId,
+                        classifier: '',
+                        file: "target/${pom.artifactId}-${pom.version}.jar",
+                        type: 'jar'
+                        ]])}
+
             }
         }
     }
