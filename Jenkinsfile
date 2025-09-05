@@ -87,5 +87,49 @@ pipeline {
                 }
             }
         }
+
+        stage('Publish JAR (Maven)') {
+            when { branch 'main' }  // for main branch only
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'nexus-maven-creds', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                script {
+                    // mvn deploy will publish main artifact (JAR) and ATTACHED artifacts (tar.gz) to appropriate repo
+                    // snapshots vs releases are chosen by whether version ends with -SNAPSHOT
+                    sh '''
+                    MVN_ARGS="-DskipTests -DaltDeploymentRepository="
+                    VERSION=$(mvn -q -Dexec.cleanupDaemonThreads=false -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:3.1.0:exec)
+                    if echo "$VERSION" | grep -q SNAPSHOT; then
+                        REPO="internal-snapshots::default::${MVN_SNAPSHOTS_URL}"
+                    else
+                        REPO="internal-releases::default::${MVN_RELEASES_URL}"
+                    fi
+                    mvn -B deploy -DskipTests -DaltDeploymentRepository="$REPO" -Dnexus.username="$NEXUS_USER" -Dnexus.password="$NEXUS_PASS"
+                    '''
+                }
+                }
+            }
+        }
+        stage('Publish JAR to Nexus (Maven)') {
+            when { branch 'main' }  // publish for PRs (optional), guaranteed for main
+            steps {
+                script {
+                    def pom = readMavenPom file: 'pom.xml'
+                    nexusArtifactUploader(
+                        nexusVersion: 'nexus3',
+                        protocol: 'http',
+                        nexusUrl: 'http://localhost:8081',
+                        groupId: pom.groupId,
+                        version: pom.version,
+                        repository: 'maven-releases',
+                        credentialsId: 'nexus-creds',
+                        artifacts: [[
+                        artifactId: pom.artifactId,
+                        classifier: '',
+                        file: "target/${pom.artifactId}-${pom.version}.jar",
+                        type: 'jar'
+                        ]])}
+
+            }
+        }
     }
 }
