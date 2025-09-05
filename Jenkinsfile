@@ -14,6 +14,11 @@ pipeline {
         jdk 'JDK 17'        // Ensure this matches your Jenkins JDK installation name
     }
 
+    environment {
+        DOCKER_REGISTRY = 'nexus:5000'
+    }
+
+
     stages {
         stage('Cleanup workspace and Checkout') {
             steps {
@@ -21,6 +26,21 @@ pipeline {
                 sh 'echo "Branch: ${BRANCH_NAME:-unknown}; Commit: ${GIT_COMMIT:-unknown}; ChangeID: ${CHANGE_ID:-unknown}"'
                 cleanWs()
                 checkout scm
+            }
+        }
+
+        stage('Build and push Docker Image') {
+            steps {
+                def pom = readMavenPom file: 'pom.xml'
+                env.IMAGE_NAME = pom.artifactId
+                env.IMAGE_TAG = "${pom.version}-${sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()}"
+                withCredentials([usernamePassword(credentialsId: 'nexus-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    script {
+                        docker.withRegistry("https://${DOCKER_REGISTRY}", 'nexus-creds') {
+                            docker.build("${DOCKER_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_TAG}").push()
+                        }
+                    }
+                }
             }
         }
 
@@ -88,28 +108,6 @@ pipeline {
             }
         }
 
-        stage('Publish JAR to Nexus (Maven)') {
-            when { branch 'main' }  // publish for PRs (optional), guaranteed for main
-            steps {
-                sh 'mvn package -DskipTests'
-                script {
-                    def pom = readMavenPom file: 'pom.xml'
-                    nexusArtifactUploader(
-                        nexusVersion: 'nexus3',
-                        protocol: 'http',
-                        nexusUrl: 'nexus:8081',
-                        groupId: pom.groupId,
-                        version: pom.version,
-                        repository: 'maven-releases',
-                        credentialsId: 'nexus-creds',
-                        artifacts: [[
-                        artifactId: pom.artifactId,
-                        classifier: '',
-                        file: "target/${pom.artifactId}-${pom.version}.jar",
-                        type: 'jar'
-                        ]])}
 
-            }
-        }
     }
 }
