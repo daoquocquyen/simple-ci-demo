@@ -15,7 +15,7 @@ pipeline {
     }
 
     environment {
-        DOCKER_REGISTRY = 'nexus:5000'
+        DOCKER_REGISTRY = 'localhost:5000'
     }
 
 
