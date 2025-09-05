@@ -37,7 +37,7 @@ pipeline {
                     env.IMAGE_TAG = "${pom.version}-${sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()}"
                     withCredentials([usernamePassword(credentialsId: 'nexus-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         script {
-                            docker.withRegistry("${DOCKER_REGISTRY}", 'nexus-creds') {
+                            docker.withRegistry("http://${DOCKER_REGISTRY}", 'nexus-creds') {
                                 docker.build("${DOCKER_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_TAG}").push()
                             }
                         }
