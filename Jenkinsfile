@@ -17,10 +17,15 @@ pipeline {
     stages {
         stage('Cleanup workspace and Checkout') {
             steps {
+                // Note: BRANCH_NAME, GIT_COMMIT and CHANGE_ID are the built-in environment variables
+                sh 'echo "Branch: ${BRANCH_NAME:-unknown}; Commit: ${GIT_COMMIT:-unknown}; ChangeID: ${CHANGE_ID:-unknown}"'
+                script {
+                    if (env.CHANGE_ID) {
+                        githubNotify context: 'Jenkins CI', status: 'PENDING', description: 'Build started'
+                    }
+                }
                 cleanWs()
                 checkout scm
-                // Note: BRANCH_NAME and GIT_COMMIT are the built-in environment variables
-                sh 'echo "Branch: ${BRANCH_NAME:-unknown}; Commit: ${GIT_COMMIT:-unknown}"'
             }
         }
 
@@ -87,7 +92,5 @@ pipeline {
                 }
             }
         }
-
-
     }
 }
