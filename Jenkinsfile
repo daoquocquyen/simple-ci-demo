@@ -35,13 +35,61 @@ pipeline {
                     def pom = readMavenPom file: 'pom.xml'
                     env.IMAGE_NAME = pom.artifactId
                     env.IMAGE_TAG = "${pom.version}-${sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()}"
+                    env.FULL_IMAGE = "${DOCKER_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
                     withCredentials([usernamePassword(credentialsId: 'nexus-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         script {
                             docker.withRegistry("http://${DOCKER_REGISTRY}", 'nexus-creds') {
-                                docker.build("${DOCKER_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_TAG}").push()
+                                docker.build(env.FULL_IMAGE).push()
                             }
                         }
                     }
+                }
+            }
+        }
+
+        stage('Trivy Scan and Generate SBOM') {
+            // Run Trivy inside a container; Jenkins auto-mounts $WORKSPACE
+            agent {
+                docker {
+                image 'aquasec/trivy:0.66.0'
+                // 1) Docker socket so Trivy can see local images built earlier
+                // 2) Named volume for DB cache (faster scans, persists across runs)
+                // 3) (Optional) set HOME to avoid permission oddities on some images
+                args '-v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache -e HOME=/root'
+                }
+            }
+            environment {
+                // Set this earlier after your build; shown here for completeness
+                // FULL_IMAGE = "registry.example.com/team/app:${BUILD_NUMBER}"
+                TRIVY_SEVERITY = 'HIGH,CRITICAL'
+            }
+            steps {
+                sh '''
+                set -e
+                mkdir -p reports
+
+                # Machine-readable JSON (optional, for Warnings-NG or later processing)
+                trivy image \
+                    --scanners vuln \
+                    --severity "${TRIVY_SEVERITY}" \
+                    --ignore-unfixed \
+                    --no-progress \
+                    --timeout 10m \
+                    --format json \
+                    --output reports/trivy.json \
+                    "${FULL_IMAGE}"
+
+                # CycloneDX SBOM alongside the scan
+                trivy image --format cyclonedx --output reports/sbom-image-cyclonedx.json "${FULL_IMAGE}"
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts(artifacts: 'reports/sbom-image-cyclonedx.json', fingerprint: true)
+                    recordIssues(tools: [trivy(pattern: 'reports/trivy.json')])
+                }
+                failure {
+                    echo "Vulnerability gate failed. See reports/trivy-table.txt"
                 }
             }
         }
@@ -109,7 +157,5 @@ pipeline {
                 }
             }
         }
-
-
     }
 }
