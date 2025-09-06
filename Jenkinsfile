@@ -55,7 +55,7 @@ pipeline {
                 // 1) Docker socket so Trivy can see local images built earlier
                 // 2) Named volume for DB cache (faster scans, persists across runs)
                 // 3) (Optional) set HOME to avoid permission oddities on some images
-                args '--entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache -e HOME=/root'
+                args '--entrypoint="" -u 0:0 -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache -e HOME=/root'
                 }
             }
             environment {
