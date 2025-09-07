@@ -27,6 +27,7 @@ pipeline {
                 // Note: BRANCH_NAME, GIT_COMMIT and CHANGE_ID are the built-in environment variables
                 sh 'echo "Branch: ${BRANCH_NAME:-unknown}; Commit: ${GIT_COMMIT:-unknown}; ChangeID: ${CHANGE_ID:-unknown}"'
                 cleanWs()
+                // Note: Shallow clone to speed up checkout
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: env.BRANCH_NAME]],
@@ -35,6 +36,31 @@ pipeline {
                         [$class: 'CloneOption', depth: 1, noTags: false, shallow: true]
                     ]
                 ])
+            }
+        }
+
+        stage('Static Analysis (Checkstyle/PMD/SpotBugs)') {
+            agent {
+                docker {
+                    image "maven:3.9.6-eclipse-temurin-17"
+                    args  '-v maven-cache:/root/.m2:rw'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh './mvnw -B checkstyle:check pmd:check spotbugs:check'
+            }
+            post {
+                always {
+                    recordIssues(
+                        enabledForFailure: true,
+                        tools: [
+                            pmdParser(pattern: 'target/pmd.xml'),
+                            checkStyle(pattern: 'target/checkstyle-result.xml'),
+                            spotBugs(pattern: 'target/spotbugsXml.xml')
+                        ]
+                    )
+                }
             }
         }
 
@@ -120,23 +146,7 @@ pipeline {
             }
         }
 
-        stage('Static Analysis (PMD/Checkstyle/SpotBugs)') {
-            steps {
-                sh 'mvn integration-test -DskipTests=true -DskipITs=false'
-            }
-            post {
-                always {
-                recordIssues(
-                    enabledForFailure: true,
-                    tools: [
-                        pmdParser(pattern: 'target/pmd.xml'),
-                        checkStyle(pattern: 'target/checkstyle-result.xml'),
-                        spotBugs(pattern: 'target/spotbugsXml.xml')
-                    ]
-                )
-                }
-            }
-        }
+
 
         stage('Dependency Audit (OWASP)') {
             steps {
