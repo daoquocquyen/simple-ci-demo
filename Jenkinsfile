@@ -11,15 +11,9 @@ pipeline {
         skipDefaultCheckout(false)
     }
 
-    tools {
-        maven 'Maven 3.8.8' // Ensure this matches your Jenkins Maven installation name
-        jdk 'JDK 17'        // Ensure this matches your Jenkins JDK installation name
-    }
-
     environment {
         DOCKER_REGISTRY = 'localhost:5000'
     }
-
 
     stages {
         stage('Cleanup workspace and Checkout') {
@@ -62,6 +56,17 @@ pipeline {
                     )
                 }
             }
+        }
+
+        stage('Secrets Scan') {
+            agent {
+                docker {
+                    image 'zricethezav/gitleaks:v8.28.0'
+                }
+            }
+            steps {
+            sh 'gitleaks detect --no-banner --redact --exit-code 1'
+          }
         }
 
         stage('Build and push Docker Image') {
