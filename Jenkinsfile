@@ -13,6 +13,7 @@ pipeline {
 
     environment {
         DOCKER_REGISTRY = 'localhost:5000'
+        JENKINS_HOME ='/var/jenkins_home'
     }
 
     stages {
