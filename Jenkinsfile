@@ -67,7 +67,7 @@ pipeline {
                 }
             }
             steps {
-                sh 'detect --source=. --no-banner --redact --exit-code 1'
+                sh 'gitleaks detect --source=. --no-banner --redact --exit-code 1'
             }
         }
 
