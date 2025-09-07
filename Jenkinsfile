@@ -13,7 +13,6 @@ pipeline {
 
     environment {
         DOCKER_REGISTRY = 'localhost:5000'
-        USER_HOME = "/home/jenkins"
     }
 
     stages {
@@ -38,11 +37,11 @@ pipeline {
             agent {
                 docker {
                     image "maven:3.9.6-eclipse-temurin-17"
-                    args  '-v /var/jenkins_home/.m2:${USER_HOME}/.m2:rw'
+                    args  '-v ${JENKINS_HOME}/.m2:${JENKINS_HOME}/.m2:rw'
                 }
             }
             steps {
-                sh 'ls -la && ls -la ${USER_HOME} && ls -la ${USER_HOME}/.m2 && mvn -B -Duser.home=${USER_HOME} -Dmaven.repo.local=${USER_HOME}/.m2/repository checkstyle:check pmd:check spotbugs:check'
+                sh 'ls -la && ls -la ${JENKINS_HOME} && ls -la ${JENKINS_HOME}/.m2 && mvn -B -Duser.home=${JENKINS_HOME} -Dmaven.repo.local=${JENKINS_HOME}/.m2/repository checkstyle:check pmd:check spotbugs:check'
             }
             post {
                 always {
