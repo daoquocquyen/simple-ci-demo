@@ -38,11 +38,11 @@ pipeline {
             agent {
                 docker {
                     image "maven:3.9.6-eclipse-temurin-17"
-                    args  "-v ${JENKINS_HOME}:${JENKINS_HOME}:rw"
+                    args  "-e MAVEN_CONFIG=/mvn/.m2 -e HOME=/mvn -v maven-repo:/mvn/.m2"
                 }
             }
             steps {
-                sh "mkdir -p ${JENKINS_HOME}/.m2 && mvn -B -Duser.home=${JENKINS_HOME} -Dmaven.repo.local=${JENKINS_HOME}/.m2/repository checkstyle:check pmd:check spotbugs:check"
+                sh "mvn checkstyle:check pmd:check spotbugs:check"
             }
             post {
                 always {
