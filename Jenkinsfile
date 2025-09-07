@@ -71,6 +71,51 @@ pipeline {
             }
         }
 
+        stage('Build & Unit Tests (JDK 17)') {
+            agent {
+                docker {
+                    image "maven:3.9.6-eclipse-temurin-17"
+                    args  "-e MAVEN_CONFIG=/mvn/.m2 -e HOME=/mvn -v maven-repo:/mvn/.m2"
+                }
+            }
+            steps {
+                sh 'mvn -B -U -DskipITs=true clean verify jacoco:report package'
+            }
+            post {
+                always {
+                    junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
+                    publishHTML(target: [
+                        reportName: 'JaCoCo (Unit)',
+                        reportDir : 'target/site/jacoco',
+                        reportFiles: 'index.html',
+                        keepAll: true, alwaysLinkToLastBuild: true
+                    ])
+                }
+            }
+        }
+
+        stage('Dependency Audit (OWASP)') {
+            agent {
+                docker {
+                    image "maven:3.9.6-eclipse-temurin-17"
+                    args  "-e MAVEN_CONFIG=/mvn/.m2 -e HOME=/mvn -v maven-repo:/mvn/.m2"
+                }
+            }
+            steps {
+                sh 'mvn -B -DskipTests org.owasp:dependency-check-maven:check -Dformat=HTML'
+            }
+            post {
+                always {
+                publishHTML(target: [
+                    reportName: 'OWASP Dependency-Check',
+                    reportDir : 'target',
+                    reportFiles: 'dependency-check-report.html',
+                    keepAll: true, alwaysLinkToLastBuild: true
+                ])
+                }
+            }
+        }
+
         stage('Build and push Docker Image') {
             steps {
                 script {
@@ -136,40 +181,7 @@ pipeline {
             }
         }
 
-        stage('Build & Unit Tests (JDK 17)') {
-            steps {
-                sh 'mvn -B -U -DskipITs=true clean verify jacoco:report package'
-            }
-            post {
-                always {
-                    junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
-                    publishHTML(target: [
-                        reportName: 'JaCoCo (Unit)',
-                        reportDir : 'target/site/jacoco',
-                        reportFiles: 'index.html',
-                        keepAll: true, alwaysLinkToLastBuild: true
-                    ])
-                }
-            }
-        }
 
-
-
-        stage('Dependency Audit (OWASP)') {
-            steps {
-                sh 'mvn -B -DskipTests org.owasp:dependency-check-maven:check -Dformat=HTML'
-            }
-            post {
-                always {
-                publishHTML(target: [
-                    reportName: 'OWASP Dependency-Check',
-                    reportDir : 'target',
-                    reportFiles: 'dependency-check-report.html',
-                    keepAll: true, alwaysLinkToLastBuild: true
-                ])
-                }
-            }
-        }
 
         stage('Integration Tests') {
             // Run ITs on PRs and on main branch commits
