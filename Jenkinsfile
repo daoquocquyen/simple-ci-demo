@@ -13,6 +13,7 @@ pipeline {
 
     environment {
         DOCKER_REGISTRY = 'localhost:5000'
+        USER_HOME = "/home/jenkins"
     }
 
     stages {
@@ -37,12 +38,12 @@ pipeline {
             agent {
                 docker {
                     image "maven:3.9.6-eclipse-temurin-17"
-                    args  '-v $HOME/.m2:/root/.m2:rw'
+                    args  '-v ${HOME}/.m2:/home/jenkins/.m2:rw'
                     reuseNode true
                 }
             }
             steps {
-                sh 'mvn -B checkstyle:check pmd:check spotbugs:check'
+                sh 'mvn -B -Duser.home=${USER_HOME} -Dmaven.repo.local=${USER_HOME}/.m2/repository checkstyle:check pmd:check spotbugs:check'
             }
             post {
                 always {
@@ -67,7 +68,7 @@ pipeline {
                 }
             }
             steps {
-                sh 'gitleaks detect --source=. --no-banner --redact --exit-code 1'
+                sh 'ls -la && gitleaks detect --source=. --no-banner --redact --exit-code 1'
             }
         }
 
