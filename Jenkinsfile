@@ -34,44 +34,48 @@ pipeline {
             }
         }
 
-        stage('Static Analysis (Checkstyle/PMD/SpotBugs)') {
-            agent {
-                docker {
-                    image "maven:3.9.6-eclipse-temurin-17"
-                    args  "-e MAVEN_CONFIG=/mvn/.m2 -e HOME=/mvn -v maven-repo:/mvn/.m2"
+        stage('Static Analysis & Secrets scan in parallel') {
+            parallel {
+                stage('Static Analysis (Checkstyle/PMD/SpotBugs)') {
+                    agent {
+                        docker {
+                            image "maven:3.9.6-eclipse-temurin-17"
+                            args  "-e MAVEN_CONFIG=/mvn/.m2 -e HOME=/mvn -v maven-repo:/mvn/.m2"
+                        }
+                    }
+                    steps {
+                        sh "mvn checkstyle:check pmd:check spotbugs:check"
+                    }
+                    post {
+                        always {
+                            recordIssues(
+                                enabledForFailure: true,
+                                tools: [
+                                    pmdParser(pattern: 'target/pmd.xml'),
+                                    checkStyle(pattern: 'target/checkstyle-result.xml'),
+                                    spotBugs(pattern: 'target/spotbugsXml.xml')
+                                ]
+                            )
+                        }
+                    }
                 }
-            }
-            steps {
-                sh "mvn checkstyle:check pmd:check spotbugs:check"
-            }
-            post {
-                always {
-                    recordIssues(
-                        enabledForFailure: true,
-                        tools: [
-                            pmdParser(pattern: 'target/pmd.xml'),
-                            checkStyle(pattern: 'target/checkstyle-result.xml'),
-                            spotBugs(pattern: 'target/spotbugsXml.xml')
-                        ]
-                    )
+
+                stage('Secrets Scan') {
+                    agent {
+                        docker {
+                            image 'zricethezav/gitleaks:v8.28.0'
+                            args  '--entrypoint=""'
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        sh 'gitleaks detect --source=. --no-banner --redact --exit-code 1'
+                    }
                 }
             }
         }
 
-        stage('Secrets Scan') {
-            agent {
-                docker {
-                    image 'zricethezav/gitleaks:v8.28.0'
-                    args  '--entrypoint=""'
-                    reuseNode true
-                }
-            }
-            steps {
-                sh 'gitleaks detect --source=. --no-banner --redact --exit-code 1'
-            }
-        }
-
-        stage('Build & Unit Tests (JDK 17)') {
+        stage('Build, Unit Tests and Coverage') {
             agent {
                 docker {
                     image "maven:3.9.6-eclipse-temurin-17"
@@ -112,6 +116,25 @@ pipeline {
                     reportFiles: 'dependency-check-report.html',
                     keepAll: true, alwaysLinkToLastBuild: true
                 ])
+                }
+            }
+        }
+
+        stage('Integration Tests') {
+            agent {
+                docker {
+                    image "maven:3.9.6-eclipse-temurin-17"
+                    args  "-e MAVEN_CONFIG=/mvn/.m2 -e HOME=/mvn -v maven-repo:/mvn/.m2"
+                }
+            }
+            // Note: Run ITs on PRs and on main branch commits
+            when { anyOf { changeRequest(); branch 'main' } }
+            steps {
+                sh 'mvn -B -DskipITs=false verify'
+            }
+            post {
+                always {
+                    junit testResults: 'target/failsafe-reports/*.xml', allowEmptyResults: true
                 }
             }
         }
@@ -183,17 +206,6 @@ pipeline {
 
 
 
-        stage('Integration Tests') {
-            // Run ITs on PRs and on main branch commits
-            when { anyOf { changeRequest(); branch 'main' } }
-            steps {
-                sh 'mvn -B -DskipITs=false verify'
-            }
-            post {
-                always {
-                    junit testResults: 'target/failsafe-reports/*.xml', allowEmptyResults: true
-                }
-            }
-        }
+
     }
 }
