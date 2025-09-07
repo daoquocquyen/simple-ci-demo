@@ -37,7 +37,7 @@ pipeline {
             agent {
                 docker {
                     image "maven:3.9.6-eclipse-temurin-17"
-                    args  '-v maven-cache:/root/.m2:rw'
+                    args  '-v $HOME/.m2:/root/.m2:rw'
                     reuseNode true
                 }
             }
