@@ -38,12 +38,12 @@ pipeline {
             agent {
                 docker {
                     image "maven:3.9.6-eclipse-temurin-17"
-                    args  '-v ${HOME}/.m2:/home/jenkins/.m2:rw'
+                    args  '-v ${HOME}/.m2:${USER_HOME}/.m2:rw'
                     reuseNode true
                 }
             }
             steps {
-                sh 'mvn -B -Duser.home=${USER_HOME} -Dmaven.repo.local=${USER_HOME}/.m2/repository checkstyle:check pmd:check spotbugs:check'
+                sh 'ls -la && mvn -B -Duser.home=${USER_HOME} -Dmaven.repo.local=${USER_HOME}/.m2/repository checkstyle:check pmd:check spotbugs:check'
             }
             post {
                 always {
