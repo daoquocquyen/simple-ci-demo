@@ -159,6 +159,11 @@
             </goals>
           </execution>
         </executions>
+        <configuration>
+          <effort>Max</effort>
+          <threshold>Low</threshold>
+          <failOnError>true</failOnError>
+        </configuration>
       </plugin>
 
       <!-- Checkstyle Plugin -->

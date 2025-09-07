@@ -65,8 +65,8 @@ pipeline {
                 }
             }
             steps {
-            sh 'gitleaks detect --no-banner --redact --exit-code 1'
-          }
+                sh 'detect --source=. --no-banner --redact --exit-code 1'
+            }
         }
 
         stage('Build and push Docker Image') {
