@@ -5,6 +5,8 @@ pipeline {
         ansiColor('xterm')
         buildDiscarder(logRotator(numToKeepStr: '50'))
         disableConcurrentBuilds()
+        timeout(time: 40, unit: 'MINUTES')
+        parallelsAlwaysFailFast()
         // Speeds up PR feedback if something fails early:
         skipDefaultCheckout(false)
     }
@@ -25,7 +27,14 @@ pipeline {
                 // Note: BRANCH_NAME, GIT_COMMIT and CHANGE_ID are the built-in environment variables
                 sh 'echo "Branch: ${BRANCH_NAME:-unknown}; Commit: ${GIT_COMMIT:-unknown}; ChangeID: ${CHANGE_ID:-unknown}"'
                 cleanWs()
-                checkout scm
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: env.BRANCH_NAME]],
+                    userRemoteConfigs: [[url: 'https://github.com/daoquocquyen/simple-ci-demo.git']],
+                    extensions: [
+                        [$class: 'CloneOption', depth: 1, noTags: false, shallow: true]
+                    ]
+                ])
             }
         }
 
