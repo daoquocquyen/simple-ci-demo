@@ -19,18 +19,11 @@ pipeline {
     stages {
         stage('Cleanup workspace and Checkout') {
             steps {
-                // Note: BRANCH_NAME, GIT_COMMIT and CHANGE_ID are the built-in environment variables
+                // NOTE: BRANCH_NAME, GIT_COMMIT and CHANGE_ID are the built-in environment variables
                 sh 'echo "Branch: ${BRANCH_NAME:-unknown}; Commit: ${GIT_COMMIT:-unknown}; ChangeID: ${CHANGE_ID:-unknown}"'
                 cleanWs()
-                // Note: Shallow clone to speed up checkout
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: env.BRANCH_NAME]],
-                    userRemoteConfigs: [[url: 'https://github.com/daoquocquyen/simple-ci-demo.git']],
-                    extensions: [
-                        [$class: 'CloneOption', depth: 1, noTags: false, shallow: true]
-                    ]
-                ])
+                // NOTE: Shallow clone on job config to speed up checkout
+                checkout scm
             }
         }
 
@@ -127,7 +120,7 @@ pipeline {
                     args  "-e MAVEN_CONFIG=/mvn/.m2 -e HOME=/mvn -v maven-repo:/mvn/.m2"
                 }
             }
-            // Note: Run ITs on PRs and on main branch commits
+            // NOTE: Run ITs on PRs and on main branch commits
             when { anyOf { changeRequest(); branch 'main' } }
             steps {
                 sh 'mvn -B -DskipITs=false verify'
