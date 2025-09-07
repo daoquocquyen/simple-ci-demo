@@ -38,7 +38,7 @@ pipeline {
             agent {
                 docker {
                     image "maven:3.9.6-eclipse-temurin-17"
-                    args  '-v ${HOME}/.m2:${USER_HOME}/.m2:rw'
+                    args  '-v /var/jenkins_home/.m2:${USER_HOME}/.m2:rw'
                     reuseNode true
                 }
             }
