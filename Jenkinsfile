@@ -48,7 +48,7 @@ pipeline {
                 }
             }
             steps {
-                sh './mvnw -B checkstyle:check pmd:check spotbugs:check'
+                sh 'mvn -B checkstyle:check pmd:check spotbugs:check'
             }
             post {
                 always {
