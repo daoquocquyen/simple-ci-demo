@@ -43,7 +43,7 @@ pipeline {
                 }
             }
             steps {
-                sh 'ls -la && mvn -B -Duser.home=${USER_HOME} -Dmaven.repo.local=${USER_HOME}/.m2/repository checkstyle:check pmd:check spotbugs:check'
+                sh 'ls -la && ls -la ${USER_HOME} && ls -la ${USER_HOME}/.m2 && mvn -B -Duser.home=${USER_HOME} -Dmaven.repo.local=${USER_HOME}/.m2/repository checkstyle:check pmd:check spotbugs:check'
             }
             post {
                 always {
