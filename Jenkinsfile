@@ -62,6 +62,8 @@ pipeline {
             agent {
                 docker {
                     image 'zricethezav/gitleaks:v8.28.0'
+                    args  '--entrypoint=""'
+                    reuseNode true
                 }
             }
             steps {
