@@ -31,7 +31,7 @@ java -jar target/simple-ci-demo-0.1.0-SNAPSHOT.jar
 
 ## Code Quality Checks
 ```bash
-mvn spotbugs:check checkstyle:check
+mvn pmd:check spotbugs:check checkstyle:check
 ```
 
 ## Test
